@@ -4,7 +4,7 @@ module.exports = function(grunt) {
         less: { //Configurando o less
             development: { //Foi usado o development, pois foi usado o ambiente de desenvolvimento, no nosso computador
                 files: {
-                    'main.css':'main.less' //aquivo de destino : arquivo de origem
+                    'dev/styles/main.css':'src/styles/main.less' //aquivo de destino : arquivo de origem
                 }
             },
             production: { //Aqui é como vai se comportar na produção, onde o cliente acessa.
@@ -12,36 +12,95 @@ module.exports = function(grunt) {
                     compress: true,
                 },
                 files: {
-                    'main.min.css':'main.less' //.min é para criar esse arquivo minificado
+                    'dist/styles/main.min.css':'src/styles/main.less' //.min é para criar esse arquivo minificado
                 }
             }
         },
-        sass: { //configurando o sass
+        watch: {
+            less: {
+                files: ['src/styles/**/*.less'],
+                tasks: ['less:development']
+            },
+            html: {
+                files: ['src/index.html'],
+                tasks: ['replace:dev']
+            }
+        },
+        replace: {//Configurando o replace
+            dev: {
+                options: {
+                    patterns: [
+                        {
+                            match: 'ENDERECO_DO_CSS',
+                            replacement: './styles/main.css'
+                        },
+                        {
+                            match: 'ENDERECO_DO_JS',
+                            replacement: '../src/scripts/main.js'
+                        }
+                    ]
+                },
+                files: [
+                    {
+                        expand: true,
+                        flatten: true,
+                        src: ['src/index.html'], //arquivo onde a substituição vai ser feita
+                        dest: 'dev/' //pasta de destino do arquivo acima
+                    }
+                ]
+            },
             dist: {
                 options: {
-                    style: 'compressed' //arquivo minificado do sass
+                    patterns: [
+                        {
+                            match: 'ENDERECO_DO_CSS',
+                            replacement: './styles/main.min.css'
+                        },
+                        {
+                            match: 'ENDERECO_DO_JS',
+                            replacement: './src/scripts/main.min.js'
+                        }
+                    ]
+                },
+                files: [
+                    {
+                        expand: true,
+                        flatten: true,
+                        src: ['prebuild/index.html'], //arquivo onde a substituição vai ser feita
+                        dest: 'dist/' //pasta de destino do arquivo acima
+                    }
+                ]
+            }
+        },
+        htmlmin: {//Configurando o HTMLMIN
+            dist: {
+                options: {
+                    removeComments: true, //Remove qualquer comentário no HTML
+                    collapseWhitespace: true, //Apaga todo espaço em branco
                 },
                 files: {
-                    'main2.css':'main.scss' //aquivo de destino : arquivo de origem - CUIDADO PARA NÃO SOBRESCREVER POR CAUSA DO NOME
+                    'prebuild/index.html' : 'src/index.html' //1. ele faz a minificação - 'origem' : 'destino'
+                    //2. ele faz a substituição do arquivo na PROD(DIST)
                 }
             }
         },
-        concurrent: { //configurando o concurrent
-            target: ['olaGrunt','less','sass']
+        clean: ['prebuild'],
+        uglify: {
+            target: {
+                files: {
+                    'dist/scripts/main.min.js' : 'src/scripts/main.js'
+                }
+            }
         }
     })
 
-    grunt.registerTask('olaGrunt', function() {
-        const done = this.async();
-        setTimeout(function() {
-            console.log('Olá Grunt');
-            done();
-        }, 3000); //3000 é o tempo de espera
-    })
-
     grunt.loadNpmTasks('grunt-contrib-less'); //Carregando o plugin do less
-    grunt.loadNpmTasks('grunt-contrib-sass'); //Carregando o plugin do sass
-    grunt.loadNpmTasks('grunt-concurrent'); //Carregando o plugin do concurrent
-    
-    grunt.registerTask('default', ['concurrent']); //onde vamos adicionar as tarefas, nesse caso o concurrent faz toas as tarefas de uma serial
+    grunt.loadNpmTasks('grunt-contrib-watch'); //Carregando o plugin do watch
+    grunt.loadNpmTasks('grunt-replace'); //Carregando o plugin do grunt replace
+    grunt.loadNpmTasks('grunt-contrib-htmlmin'); //Carregando o plugin
+    grunt.loadNpmTasks('grunt-contrib-clean'); //Carregando o plugin
+    grunt.loadNpmTasks('grunt-contrib-uglify');
+
+    grunt.registerTask('default', ['watch']); //tarefa para salvar os arquivos automaticamente
+    grunt.registerTask('build', ['less:production','htmlmin:dist','replace:dist','clean','uglify']); //tarefa para salvar os arquivos para a PROD
 }
